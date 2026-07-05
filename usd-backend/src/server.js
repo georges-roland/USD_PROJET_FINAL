@@ -29,7 +29,25 @@ const app = express();
 // ==========================================
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(compression());
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+
+// [CORRIGÉ] Ajout du domaine Vercel à la liste des origines autorisées
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://usd-projet-final.vercel.app'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Autorise les requêtes sans origine (comme les outils de test ou curl)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Non autorisé par CORS'));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -44,7 +62,6 @@ app.use('/api/', apiLimiter);
 // ==========================================
 // 2. LOGGING INDUSTRIEL (MORGAN)
 // ==========================================
-// Affiche dans le terminal un log propre pour chaque requête
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
 
 // Dossier public pour les images
@@ -72,10 +89,8 @@ app.use('/api/v1/stats', statsRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 
 // ==========================================
-// 4. GESTION DES ERREURS (CATCH-ALL)
+// 4. GESTION DES ERREURS
 // ==========================================
-
-// Intercepte les routes qui n'existent pas (Erreur 404)
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -83,7 +98,6 @@ app.use('*', (req, res) => {
   });
 });
 
-// Middleware Global de traitement des erreurs (Évite le crash fatal)
 app.use((err, req, res, next) => {
   console.error("🔴 [ERREUR FATALE] :", err.stack);
   res.status(500).json({
@@ -94,32 +108,20 @@ app.use((err, req, res, next) => {
 });
 
 // ==========================================
-// 5. DÉMARRAGE ET GRACEFUL SHUTDOWN
+// 5. DÉMARRAGE
 // ==========================================
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`\n🚀 [SERVER] Démarrage de l'API USD.Pro`);
-  console.log(`📡 [PORT] En écoute sur le port ${PORT}`);
-  console.log(`🛡️  [SECURITY] Helmet & RateLimiter activés`);
-  console.log(`📊 [LOGS] Morgan logger activé\n`);
+  console.log(`📡 [PORT] En écoute sur le port ${PORT}\n`);
 });
 
-// Gestion de la fermeture propre du serveur
 const shutdown = async () => {
-  console.log('\n🛑 [SHUTDOWN] Signal de fermeture reçu. Extinction en cours...');
   server.close(async () => {
-    console.log('💤 [SERVER] Serveur HTTP fermé.');
-    try {
-      await pool.end(); // Ferme les connexions à PostgreSQL
-      console.log('🐘 [DATABASE] Pool PostgreSQL fermé proprement.');
-      process.exit(0);
-    } catch (err) {
-      console.error('🔴 [DATABASE] Erreur lors de la fermeture :', err);
-      process.exit(1);
-    }
+    await pool.end();
+    process.exit(0);
   });
 };
 
-// Écoute des signaux d'arrêt (Ctrl+C, etc.)
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
