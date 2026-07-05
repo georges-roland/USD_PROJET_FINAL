@@ -1,7 +1,11 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 
-const api = axios.create({ baseURL: 'http://localhost:5000/api/v1', withCredentials: true });
+// [CORRIGÉ] Utilisation de la variable d'environnement avec fallback sécurisé vers Render
+const api = axios.create({ 
+  baseURL: import.meta.env.VITE_API_URL || 'https://usd-backend-api.onrender.com', 
+  withCredentials: true 
+});
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
