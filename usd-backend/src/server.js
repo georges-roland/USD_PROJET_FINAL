@@ -30,7 +30,7 @@ const app = express();
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(compression());
 
-// [CORRIGÉ] Ajout du domaine Vercel à la liste des origines autorisées
+// [CORRIGÉ] Liste des origines autorisées - Assure-toi que c'est bien ton URL Vercel
 const allowedOrigins = [
   'http://localhost:5173',
   'https://usd-projet-final.vercel.app'
@@ -38,7 +38,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Autorise les requêtes sans origine (comme les outils de test ou curl)
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -47,6 +46,9 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// Gestion explicite des requêtes OPTIONS (pré-vol)
+app.options('*', cors());
 
 app.use(express.json());
 app.use(cookieParser());
@@ -60,22 +62,26 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // ==========================================
-// 2. LOGGING INDUSTRIEL (MORGAN)
+// 2. LOGGING & DEBUG
 // ==========================================
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
 
-// Dossier public pour les images
+// Logue l'origine de chaque requête pour debugger le CORS
+app.use((req, res, next) => {
+  console.log(`[REQ] ${req.method} ${req.url} | Origin: ${req.get('origin')}`);
+  next();
+});
+
+// Dossier public
 app.use('/uploads', express.static('uploads'));
 
 // Documentation Swagger
 const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
-  customSiteTitle: "USD Pro API Documentation"
-}));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Route de santé
 app.get('/api/v1/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
+  res.status(200).json({ status: 'OK', message: 'API opérationnelle' });
 });
 
 // ==========================================
@@ -94,7 +100,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: `La route ${req.originalUrl} n'existe pas sur ce serveur.`
+    message: `La route ${req.originalUrl} n'existe pas.`
   });
 });
 
@@ -102,7 +108,7 @@ app.use((err, req, res, next) => {
   console.error("🔴 [ERREUR FATALE] :", err.stack);
   res.status(500).json({
     success: false,
-    message: "Une erreur interne critique s'est produite.",
+    message: "Une erreur interne s'est produite.",
     error: process.env.NODE_ENV === 'development' ? err.message : {}
   });
 });
@@ -110,12 +116,14 @@ app.use((err, req, res, next) => {
 // ==========================================
 // 5. DÉMARRAGE
 // ==========================================
+// IMPORTANT: Railway injecte le port, ne pas forcer 5000 en prod
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
-  console.log(`\n🚀 [SERVER] Démarrage de l'API USD.Pro`);
-  console.log(`📡 [PORT] En écoute sur le port ${PORT}\n`);
+  console.log(`🚀 [SERVER] Démarrage de l'API USD.Pro`);
+  console.log(`📡 [PORT] En écoute sur le port ${PORT}`);
 });
 
+// Graceful shutdown
 const shutdown = async () => {
   server.close(async () => {
     await pool.end();
