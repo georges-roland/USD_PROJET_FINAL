@@ -25,35 +25,34 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // ==========================================
-// 1. SÉCURITÉ & CORS
+// 1. SÉCURITÉ & CORS (CORRIGÉ)
 // ==========================================
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(compression());
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://usd-projet-final.vercel.app',
-  'https://usd-projet-final-d6epedaip-epole-georges-projects.vercel.app'
-];
-
-app.use(cors({
+// Configuration CORS flexible pour Vercel
+const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // Autorise localhost pour le développement et tout domaine *.vercel.app pour la prod
+    if (!origin || origin.startsWith('http://localhost') || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
-      callback(new Error('CORS blocked: Origin not allowed'));
+      callback(new Error('CORS blocked: Origine non autorisée'));
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+};
 
-app.options('*', cors()); 
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Gère les requêtes pré-vol
 
 app.use(express.json());
 app.use(cookieParser());
 
 // ==========================================
-// 2. MIDDLEWARES
+// 2. LOGGING & MIDDLEWARES
 // ==========================================
 app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));
@@ -62,7 +61,7 @@ const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // ==========================================
-// 3. ROUTES
+// 3. ROUTES API
 // ==========================================
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/catalog', catalogRoutes);
@@ -74,7 +73,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.get('/api/v1/health', (req, res) => res.status(200).json({ status: 'OK' }));
 
 // ==========================================
-// 4. GESTION DES ERREURS & DÉMARRAGE
+// 4. GESTION DES ERREURS
 // ==========================================
 app.use('*', (req, res) => res.status(404).json({ message: "Route inexistante." }));
 
