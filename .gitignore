@@ -12,12 +12,11 @@ $RECYCLE.BIN/
 DumpStack.log.tmp
 
 # =========================================================================
-# Node / Frontend (React / Vite)
+# Node / Dependencies / Build output
 # =========================================================================
 node_modules/
 dist/
 dist-ssr/
-*.local
 .eslintcache
 npm-debug.log*
 yarn-debug.log*
@@ -25,49 +24,29 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # =========================================================================
-# Java / Spring Boot / Maven / Gradle
+# Environment variables
 # =========================================================================
-# Maven build output
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.next
-pom.xml.releaseBackup
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-# Gradle build output
-.gradle/
-build/
-bin/
-out/
-!gradle/wrapper/gradle-wrapper.jar
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+usd-backend/.env
+usd-frontend/.env
 
-# Compiled class files
-*.class
-*.jar
-*.war
-*.ear
-*.nar
+# =========================================================================
+# Dynamic Uploads (Ignore uploaded files, but keep directory structure)
+# =========================================================================
+uploads/*
+!uploads/.gitkeep
 
 # =========================================================================
 # IDEs & Editors Configuration
 # =========================================================================
-# JetBrains (IntelliJ IDEA, WebStorm, etc.)
 .idea/
 *.iml
 *.iws
 *.ipr
-
-# Eclipse
-.metadata/
-.classpath
-.project
-.settings/
-*.launch
-
-# Visual Studio Code
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
